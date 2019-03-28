@@ -49,6 +49,11 @@ func connectionHandler(conn net.Conn) {
 			lines := strings.Split(buffer, "\n")
 			for i := 0; i < len(lines); i++ {
 				if i == 0 {
+					if lines[i] == "" || lines[i] == "\r" {
+						fmt.Fprintf(conn, "HTTP/1.1 404 Bad Request\nServer: %s\n\n<h1>400 Bad Request</h1>\n", SERVER);
+						conn.Close()
+						return
+					}
 					params := strings.Split(lines[i], " ")
 					fmt.Printf("[INFO] [%s] %s - %s\n", conn.RemoteAddr().String(), params[0], params[1])
 
