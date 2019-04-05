@@ -36,7 +36,7 @@ func loadConfig(path string) bool {
 func parseConfig(conf string) bool {
 	lines := strings.Split(conf, "\n")
 	for i := 0; i < len(lines); i++ {
-		params := strings.SplitN(lines[i], " ", 2)
+		params := strings.Split(lines[i], " ")
 		if len(params) > 0 {
 			switch params[0] {
 			case "ip":
@@ -58,6 +58,15 @@ func parseConfig(conf string) bool {
 				defaultPage = params[1]
 			case "php-cgi":
 				phpCgi = params[1]
+			case "vhost":
+				if len(params) >= 3 {
+					if vHostsUsed == false {
+						vHostsUsed = true
+					}
+					vHosts[params[1]] = params[2]
+				} else {
+					fmt.Println("[WARN] [CONFIG] vhost: missing parameters, skiping")
+				}
 			}
 		}
 	}

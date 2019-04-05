@@ -137,7 +137,10 @@ func sendHTTPResponse(conn net.Conn, code int, contentType string, content inter
 func handleURL(conn net.Conn, method string, urlp string, all []string, query string) bool {
 	var url string
 	var urlWithQuestion string
+	var host string
+	var docroot string
 	urlWithQuestion = ""
+	docroot = webroot
 	//var origUrl string
 	if urlp[len(urlp)-1] == '/' {
 		url = urlp + defaultPage
@@ -151,7 +154,20 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		url = url[:questionIndex]
 	}
 
-	file, err := os.Open(webroot + url)
+	for i := 0; i<len(all); i++ {
+		if strings.Index(all[i], ": ") != -1 {
+			param := strings.SplitN(all[i], ": ", 2)
+			if param[0] == "Host" {
+				host = param[1]
+			}
+		}
+	}
+
+	if vHostsUsed == true && vHosts[host] != "" {
+		docroot = vHosts[host]
+	}
+
+	file, err := os.Open(docroot + url)
 	if err != nil {
 		sendHTTPResponse(conn, 404, "text/html", "<h1>404 Not Found</h1>")
 		return false
@@ -207,7 +223,7 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 			"CONTENT_LENGTH=" + params["Content-Length"],
 			"CONTENT_TYPE=" + params["Content-Type"],
 			"REDIRECT_STATUS=1",
-			"SCRIPT_FILENAME=" + webroot + url)
+			"SCRIPT_FILENAME=" + docroot + url)
 
 		if urlWithQuestion != "" {
 			cmd.Env = append(cmd.Env, "QUERY_STRING=" + strings.SplitN(urlWithQuestion, "?", 2)[1])
