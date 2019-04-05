@@ -40,24 +40,52 @@ func parseConfig(conf string) bool {
 		if len(params) > 0 {
 			switch params[0] {
 			case "ip":
-				ip = params[1]
-			case "port":
-				portInt, err := strconv.Atoi(params[1])
-				if err != nil {
-					fmt.Println("[WARN] [CONFIG] port is not a int, using default value")
+				if len(params) >= 2 {
+					ip = params[1]
 				} else {
-					port = portInt
+					fmt.Println("[WARN] [CONFIG] ip: missing parameters, skiping")
+				}
+			case "port":
+				if len(params) >= 2 {
+					portInt, err := strconv.Atoi(params[1])
+					if err != nil {
+						fmt.Println("[WARN] [CONFIG] port is not a int, using default value")
+					} else {
+						port = portInt
+					}
+				} else {
+					fmt.Println("[WARN] [CONFIG] port: missing parameters, skiping")
 				}
 			case "charset":
-				charset = params[1]
+				if len(params) >= 2 {
+					charset = params[1]
+				} else {
+					fmt.Println("[WARN] [CONFIG] charset: missing parameters, skiping")
+				}
 			case "webroot":
-				webroot = params[1]
+				if len(params) >= 2 {
+					webroot = params[1]
+				} else {
+					fmt.Println("[WARN] [CONFIG] webroot: missing parameters, skiping")
+				}
 			case "default-type":
-				defaultMime = params[1]
+				if len(params) >= 2 {
+					defaultMime = params[1]
+				} else {
+					fmt.Println("[WARN] [CONFIG] default-type: missing parameters, skiping")
+				}
 			case "default-indexpage":
-				defaultPage = params[1]
+				if len(params) >= 2 {
+					defaultPage = params[1]
+				} else {
+					fmt.Println("[WARN] [CONFIG] default-indexpage: missing parameters, skiping")
+				}
 			case "php-cgi":
-				phpCgi = params[1]
+				if len(params) >= 2 {
+					phpCgi = params[1]
+				} else {
+					fmt.Println("[WARN] [CONFIG] php-cgi: missing parameters, skiping")
+				}
 			case "vhost":
 				if len(params) >= 3 {
 					if vHostsUsed == false {
