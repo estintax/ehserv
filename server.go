@@ -236,6 +236,13 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 			cmd.Env = append(cmd.Env, "QUERY_STRING=" + query)
 		}
 
+		for i := 0; i<len(all); i++ {
+			if strings.Index(all[i], ": ") != -1 {
+				param := strings.SplitN(all[i], ": ", 2)
+				cmd.Env = append(cmd.Env, strings.ToUpper("HTTP_" + param[0] + "=") + param[1])
+			}
+		}
+
 		stdin, _ := cmd.StdinPipe()
 		stdout, _ := cmd.StdoutPipe()
 		err = cmd.Start()
