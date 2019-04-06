@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"strconv"
+	"crypto/tls"
 )
 
 func loadConfig(path string) bool {
@@ -92,8 +93,27 @@ func parseConfig(conf string) bool {
 						vHostsUsed = true
 					}
 					vHosts[params[1]] = params[2]
+					if len(params) >= 5 {
+						cert, err := tls.LoadX509KeyPair(params[3], params[4])
+						if err != nil {
+							fmt.Printf("[WARN] [CONFIG] Failed to load certificate %s, skiping\n", params[3])
+							continue
+						}
+						certs = append(certs, cert)
+					}
 				} else {
 					fmt.Println("[WARN] [CONFIG] vhost: missing parameters, skiping")
+				}
+			case "ssl":
+				if len(params) >= 2 {
+					portInt, err := strconv.Atoi(params[1])
+					if err != nil {
+						fmt.Println("[WARN] [CONFIG] ssl port is not a int, ssl disabled")
+					} else {
+						tlsPort = portInt
+					}
+				} else {
+					fmt.Println("[WARN] [CONFIG] ssl: missing parameters, skiping")
 				}
 			}
 		}

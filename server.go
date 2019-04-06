@@ -13,7 +13,11 @@ import (
 
 var isPHP bool = false
 
-func startServer(ip string, port int) {
+func startServer() {
+	if tlsPort != 0 {
+		go startHTTPSServer()
+	}
+
 	portStr := strconv.Itoa(port)
 	addr := ip + ":" + portStr
 	serv, err := net.Listen("tcp4", addr)
@@ -26,7 +30,7 @@ func startServer(ip string, port int) {
 		conn, err := serv.Accept()
 		if err != nil {
 			fmt.Printf("[ERROR] [SERVER] Failed to accept connection: %s\n", err.Error())
-			return
+			continue
 		}
 
 		go connectionHandler(conn)
