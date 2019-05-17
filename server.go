@@ -199,7 +199,7 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 	parseTwo := strings.Split(parseOne[len(parseOne)-1], ".")
 	format := parseTwo[len(parseTwo)-1]
 
-	if format == "php" && phpCgi != "none" {
+	if findExt(format) == true && phpCgi != "none" {
 		var params map[string]string
 		//var query string
 		params = make(map[string]string)
@@ -223,7 +223,7 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 			"SERVER_NAME=" + ip,
 			"SERVER_PORT=" + strconv.Itoa(port),
 			"SERVER_PROTOCOL=HTTP/1.1",
-			"SERVER_SOFTWARE=EHServ/0.1",
+			"SERVER_SOFTWARE=" + SERVER,
 			"CONTENT_LENGTH=" + params["Content-Length"],
 			"CONTENT_TYPE=" + params["Content-Type"],
 			"REDIRECT_STATUS=1",

@@ -81,11 +81,12 @@ func parseConfig(conf string) bool {
 				} else {
 					fmt.Println("[WARN] [CONFIG] default-indexpage: missing parameters, skiping")
 				}
-			case "php-cgi":
-				if len(params) >= 2 {
+			case "cgi":
+				if len(params) >= 3 {
+					extEnum = strings.Split(params[2], ",")
 					phpCgi = params[1]
 				} else {
-					fmt.Println("[WARN] [CONFIG] php-cgi: missing parameters, skiping")
+					fmt.Println("[WARN] [CONFIG] cgi: missing parameters, skiping")
 				}
 			case "vhost":
 				if len(params) >= 3 {

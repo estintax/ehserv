@@ -11,6 +11,7 @@ var webroot string = "/var/www"
 var defaultMime string = "application/octet-stream"
 var defaultPage string = "index.html"
 var phpCgi string = "none"
+var extEnum []string
 
 var vHostsUsed bool = false
 var vHosts map[string]string
