@@ -48,7 +48,7 @@ func connectionHandler(conn net.Conn) {
 	for {
 		str, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Fprintf(conn, "HTTP/1.1 500 Internal Server Error\nServer: %s\n\n500 Internal Server Error\n", SERVER);
+			sendHTTPResponse(conn, 500, "text/plain", "500 Internal Server Error");
 			return
 		}
 
@@ -63,8 +63,7 @@ func connectionHandler(conn net.Conn) {
 			for i := 0; i < len(lines); i++ {
 				if i == 0 {
 					if lines[i] == "" || lines[i] == "\r" {
-						fmt.Fprintf(conn, "HTTP/1.1 404 Bad Request\nServer: %s\n\n<h1>400 Bad Request</h1>\n", SERVER);
-						conn.Close()
+						sendHTTPResponse(conn, 400, "text/html", "<h1>400 Bad Request</h1>");
 						return
 					}
 					params := strings.Split(lines[i], " ")
@@ -271,7 +270,7 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		data = nil
 		return true
 	}
-	
+
 	sendHTTPResponse(conn, 200, getContentType(format), data)
 	data = nil
 	return true
