@@ -60,6 +60,9 @@ func connectionHandler(conn net.Conn) {
 		if str == "\r\n" && firstLine != "POST" || str == "\n" && firstLine != "POST" {
 			strings.Trim(buffer, "\r")
 			lines := strings.Split(buffer, "\r\n")
+			if len(lines) <= 1 {
+				lines = strings.Split(buffer, "\n")
+			}
 			for i := 0; i < len(lines); i++ {
 				if i == 0 {
 					if lines[i] == "" || lines[i] == "\n" || lines[i] == "\r\n" {
@@ -166,7 +169,7 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		}
 	}
 
-	if(host == "") {
+	if host == "" {
 		sendHTTPResponse(conn, 400, "text/html", "<h1>400 Bad Request</h1>")
 		return false
 	}
