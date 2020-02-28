@@ -62,7 +62,7 @@ func connectionHandler(conn net.Conn) {
 			lines := strings.Split(buffer, "\r\n")
 			for i := 0; i < len(lines); i++ {
 				if i == 0 {
-					if lines[i] == "" || lines[i] == "\r" {
+					if lines[i] == "" || lines[i] == "\n" || lines[i] == "\r\n" {
 						sendHTTPResponse(conn, 400, "text/html", "<h1>400 Bad Request</h1>");
 						return
 					}
