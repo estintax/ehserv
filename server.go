@@ -140,7 +140,7 @@ func sendHTTPResponse(conn net.Conn, code int, contentType string, content inter
 func handleURL(conn net.Conn, method string, urlp string, all []string, query string) bool {
 	var url string
 	var urlWithQuestion string
-	var host string
+	var host string = ""
 	var docroot string
 	urlWithQuestion = ""
 	docroot = webroot
@@ -164,6 +164,11 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 				host = param[1]
 			}
 		}
+	}
+
+	if(host == "") {
+		sendHTTPResponse(conn, 400, "text/html", "<h1>400 Bad Request</h1>")
+		return false
 	}
 
 	if vHostsUsed == true && vHosts[host] != "" {
