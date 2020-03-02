@@ -178,6 +178,17 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		docroot = vHosts[host]
 	}
 
+	if len(proxyUrls) != 0 {
+		for i := 0; i < len(proxyUrls); i++ {
+			if proxyUrls[i].Vhost == host {
+				if strings.Contains(url, proxyUrls[i].Url) {
+					proxy(conn, strings.Join(all, "\r\n") + "\r\n" + query, proxyUrls[i].Address)
+					return true
+				}
+			}
+		}
+	}
+
 	file, err := os.Open(docroot + url)
 	if err != nil {
 		sendHTTPResponse(conn, 404, "text/html", "<h1>404 Not Found</h1>")

@@ -116,6 +116,12 @@ func parseConfig(conf string) bool {
 				} else {
 					fmt.Println("[WARN] [CONFIG] ssl: missing parameters, skiping")
 				}
+			case "proxy":
+				if len(params) >= 3 {
+					proxyUrls = append(proxyUrls, Proxy{Url: params[2], Vhost: params[1], Address: params[3]})
+				} else {
+					fmt.Println("[WARN] [CONFIG] proxy: missing parameters, skiping")
+				}
 			}
 		}
 	}
