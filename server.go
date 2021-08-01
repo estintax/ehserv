@@ -190,6 +190,7 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 	}
 
 	file, err := os.Open(docroot + url)
+	defer file.Close()
 	if err != nil {
 		sendHTTPResponse(conn, 404, "text/html", "<h1>404 Not Found</h1>")
 		return false
@@ -202,16 +203,6 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		file.Close()
 		return false
 	}
-
-	data := make([]byte, stat.Size())
-	for {
-		_, err := file.Read(data)
-		if err == io.EOF {
-			break
-		}
-	}
-
-	file.Close()
 
 	parseOne := strings.Split(url, "/")
 	parseTwo := strings.Split(parseOne[len(parseOne)-1], ".")
@@ -233,6 +224,16 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 			splitted := strings.SplitN(all[i], ": ", 2)
 			params[splitted[0]] = splitted[1]
 		}
+
+		data := make([]byte, stat.Size())
+		for {
+			_, err := file.Read(data)
+			if err == io.EOF {
+				break
+			}
+		}
+		file.Close()
+
 		cmd := exec.Command(phpCgi)
 		cmd.Env = append(os.Environ(),
 			"REMOTE_ADDR=" + strings.Split(conn.RemoteAddr().String(), ":")[0],
@@ -290,7 +291,9 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		return true
 	}
 
-	sendHTTPResponse(conn, 200, getContentType(format), data)
-	data = nil
+	fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nContent-Type: %s; charset=%s\r\nContent-Length: %d\r\nServer: %s\r\nConnection: close\r\n\r\n", getContentType(format), charset, stat.Size(), SERVER)
+	defer conn.Close()
+	fileReader := bufio.NewReader(file)
+	fileReader.WriteTo(conn)
 	return true
 }
