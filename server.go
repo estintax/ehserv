@@ -234,7 +234,7 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		}
 		file.Close()
 
-		cmd := exec.Command(phpCgi)
+		cmd := exec.Command(phpCgi, docroot + url)
 		cmd.Env = append(os.Environ(),
 			"REMOTE_ADDR=" + strings.Split(conn.RemoteAddr().String(), ":")[0],
 			"REMOTE_HOST=" + strings.Split(conn.RemoteAddr().String(), ":")[0],
