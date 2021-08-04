@@ -98,9 +98,9 @@ func handleProxyConnection(client net.Conn, proto string, conn net.Conn, host st
 
   var contentLength int
   for i := 1; i < len(rawHeaders); i++ {
-    splitted := strings.SplitN(rawHeaders[i], ": ", 2)
+    splitted := strings.SplitN(strings.Trim(rawHeaders[i], "\r\n"), ": ", 2)
     if len(splitted) == 2 {
-      if strings.ToLower(splitted[0]) == "Content-Length" {
+      if strings.ToLower(splitted[0]) == "content-length" {
         contentLength, _ = strconv.Atoi(splitted[1])
         break
       }
