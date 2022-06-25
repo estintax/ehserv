@@ -251,9 +251,6 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		if urlWithQuestion != "" {
 			cmd.Env = append(cmd.Env, "QUERY_STRING=" + strings.SplitN(urlWithQuestion, "?", 2)[1])
 		}
-		if query != "" {
-			cmd.Env = append(cmd.Env, "QUERY_STRING=" + query)
-		}
 
 		for i := 0; i<len(all); i++ {
 			if strings.Index(all[i], ": ") != -1 {
@@ -263,6 +260,9 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		}
 
 		stdin, _ := cmd.StdinPipe()
+		if query != "" {
+			stdin.Write([]byte(query))
+		}
 		stdout, _ := cmd.StdoutPipe()
 		err = cmd.Start()
 		if err != nil {
