@@ -1,14 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"net"
-	"strconv"
 	"bufio"
-	"strings"
+	"fmt"
+	"io"
+	"net"
 	"os"
 	"os/exec"
-	"io"
+	"strconv"
+	"strings"
 )
 
 var isPHP bool = false
@@ -33,11 +33,11 @@ func startServer() {
 			continue
 		}
 
-		go connectionHandler(conn)
+		go connectionHandler(conn, false)
 	}
 }
 
-func connectionHandler(conn net.Conn) {
+func connectionHandler(conn net.Conn, isTLS bool) {
 
 	var buffer string = ""
 	var firstLine string = ""
@@ -58,7 +58,6 @@ func connectionHandler(conn net.Conn) {
 
 		buffer = buffer + str
 		if str == "\r\n" && firstLine != "POST" || str == "\n" && firstLine != "POST" {
-			strings.Trim(buffer, "\r")
 			lines := strings.Split(buffer, "\r\n")
 			if len(lines) <= 1 {
 				lines = strings.Split(buffer, "\n")
@@ -72,7 +71,7 @@ func connectionHandler(conn net.Conn) {
 					params := strings.Split(lines[i], " ")
 					fmt.Printf("[INFO] [%s] %s - %s\n", conn.RemoteAddr().String(), params[0], params[1])
 
-					handleURL(conn, params[0], params[1], lines, "")
+					handleURL(conn, params[0], params[1], lines, "", isTLS)
 					break
 				}
 			}
@@ -90,7 +89,7 @@ func connectionHandler(conn net.Conn) {
 				params := strings.Split(strings.Split(buffer, "\r\n")[0], " ")
 				lines := strings.Split(buffer, "\r\n")
 				fmt.Printf("[INFO] [%s] %s - %s\n", conn.RemoteAddr().String(), params[0], params[1])
-				handleURL(conn, params[0], params[1], lines, query)
+				handleURL(conn, params[0], params[1], lines, query, isTLS)
 				break
 			}
 		}
@@ -102,14 +101,24 @@ func sendHTTPResponse(conn net.Conn, code int, contentType string, content inter
 	var contentLength int
 
 	switch code {
-	case 200: codeStr = "HTTP/1.1 200 OK"
-	case 301: codeStr = "HTTP/1.1 301 Moved Permanently"
-	case 302: codeStr = "HTTP/1.1 302 Found"
-	case 400: codeStr = "HTTP/1.1 400 Bad Request"
-	case 403: codeStr = "HTTP/1.1 403 Forbidden"
-	case 404: codeStr = "HTTP/1.1 404 Not Found"
-	case 500: codeStr = "HTTP/1.1 500 Internal Server Error"
-	default: codeStr = "HTTP/1.1 418 I'm a teapot"
+	case 200:
+		codeStr = "HTTP/1.1 200 OK"
+	case 301:
+		codeStr = "HTTP/1.1 301 Moved Permanently"
+	case 302:
+		codeStr = "HTTP/1.1 302 Found"
+	case 400:
+		codeStr = "HTTP/1.1 400 Bad Request"
+	case 403:
+		codeStr = "HTTP/1.1 403 Forbidden"
+	case 404:
+		codeStr = "HTTP/1.1 404 Not Found"
+	case 500:
+		codeStr = "HTTP/1.1 500 Internal Server Error"
+	case 502:
+		codeStr = "HTTP/1.1 502 Bad Gateway"
+	default:
+		codeStr = "HTTP/1.1 418 I'm a teapot"
 	}
 
 	switch content.(type) {
@@ -140,7 +149,7 @@ func sendHTTPResponse(conn net.Conn, code int, contentType string, content inter
 	conn.Close()
 }
 
-func handleURL(conn net.Conn, method string, urlp string, all []string, query string) bool {
+func handleURL(conn net.Conn, method string, urlp string, all []string, query string, isTLS bool) bool {
 	var url string
 	var urlWithQuestion string
 	var host string = ""
@@ -160,7 +169,7 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		url = url[:questionIndex]
 	}
 
-	for i := 0; i<len(all); i++ {
+	for i := 0; i < len(all); i++ {
 		if strings.Index(all[i], ": ") != -1 {
 			param := strings.SplitN(all[i], ": ", 2)
 			if param[0] == "Host" {
@@ -174,19 +183,21 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		return false
 	}
 
-	if vHostsUsed == true && vHosts[host] != "" {
-		docroot = vHosts[host]
-	}
-
 	if len(proxyUrls) != 0 {
 		for i := 0; i < len(proxyUrls); i++ {
 			if proxyUrls[i].Vhost == host {
 				if strings.Contains(url, proxyUrls[i].Url) {
-					proxy(conn, strings.Join(all, "\r\n") + "\r\n" + query, proxyUrls[i].Address)
+					if !proxy(conn, strings.Join(all, "\r\n")+"\r\n"+query, proxyUrls[i].Address, i, isTLS) {
+						sendHTTPResponse(conn, 503, "text/html", "<h1>503 Bad Gateway<h1>")
+					}
 					return true
 				}
 			}
 		}
+	}
+
+	if vHostsUsed == true && vHosts[host] != "" {
+		docroot = vHosts[host]
 	}
 
 	file, err := os.Open(docroot + url)
@@ -212,7 +223,7 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		var params map[string]string
 		//var query string
 		params = make(map[string]string)
-		for i := 0; i<len(all); i++ {
+		for i := 0; i < len(all); i++ {
 			if i == 0 {
 				continue
 			} else if all[i] == "" || all[i] == "\r\n" {
@@ -234,28 +245,28 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		}
 		file.Close()
 
-		cmd := exec.Command(phpCgi, docroot + url)
+		cmd := exec.Command(phpCgi, docroot+url)
 		cmd.Env = append(os.Environ(),
-			"REMOTE_ADDR=" + strings.Split(conn.RemoteAddr().String(), ":")[0],
-			"REMOTE_HOST=" + strings.Split(conn.RemoteAddr().String(), ":")[0],
-			"REQUEST_METHOD=" + method,
-			"SERVER_NAME=" + ip,
-			"SERVER_PORT=" + strconv.Itoa(port),
+			"REMOTE_ADDR="+strings.Split(conn.RemoteAddr().String(), ":")[0],
+			"REMOTE_HOST="+strings.Split(conn.RemoteAddr().String(), ":")[0],
+			"REQUEST_METHOD="+method,
+			"SERVER_NAME="+ip,
+			"SERVER_PORT="+strconv.Itoa(port),
 			"SERVER_PROTOCOL=HTTP/1.1",
-			"SERVER_SOFTWARE=" + SERVER,
-			"CONTENT_LENGTH=" + params["Content-Length"],
-			"CONTENT_TYPE=" + params["Content-Type"],
+			"SERVER_SOFTWARE="+SERVER,
+			"CONTENT_LENGTH="+params["Content-Length"],
+			"CONTENT_TYPE="+params["Content-Type"],
 			"REDIRECT_STATUS=1",
-			"SCRIPT_FILENAME=" + docroot + url)
+			"SCRIPT_FILENAME="+docroot+url)
 
 		if urlWithQuestion != "" {
-			cmd.Env = append(cmd.Env, "QUERY_STRING=" + strings.SplitN(urlWithQuestion, "?", 2)[1])
+			cmd.Env = append(cmd.Env, "QUERY_STRING="+strings.SplitN(urlWithQuestion, "?", 2)[1])
 		}
 
-		for i := 0; i<len(all); i++ {
+		for i := 0; i < len(all); i++ {
 			if strings.Index(all[i], ": ") != -1 {
 				param := strings.SplitN(all[i], ": ", 2)
-				cmd.Env = append(cmd.Env, strings.ToUpper("HTTP_" + param[0] + "=") + param[1])
+				cmd.Env = append(cmd.Env, strings.ToUpper("HTTP_"+param[0]+"=")+param[1])
 			}
 		}
 
@@ -266,7 +277,7 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		stdout, _ := cmd.StdoutPipe()
 		err = cmd.Start()
 		if err != nil {
-			sendHTTPResponse(conn, 500, "text/html", "<h1>500 Internal Server Error</h1></h2>Failed to start PHP Server: " + err.Error() + "</h2>")
+			sendHTTPResponse(conn, 500, "text/html", "<h1>500 Internal Server Error</h1></h2>Failed to start PHP Server: "+err.Error()+"</h2>")
 			return false
 		}
 		stdin.Write(data)

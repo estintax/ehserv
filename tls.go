@@ -8,7 +8,6 @@ import (
 
 func startHTTPSServer() {
 	cfg := &tls.Config{Certificates: certs}
-	cfg.BuildNameToCertificate()
 
 	portStr := strconv.Itoa(tlsPort)
 	addr := ip + ":" + portStr
@@ -25,6 +24,6 @@ func startHTTPSServer() {
 			continue
 		}
 
-		go connectionHandler(conn)
+		go connectionHandler(conn, true)
 	}
 }

@@ -1,12 +1,12 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"strconv"
-	"crypto/tls"
+	"strings"
 )
 
 func loadConfig(path string) bool {
@@ -90,7 +90,7 @@ func parseConfig(conf string) bool {
 				}
 			case "vhost":
 				if len(params) >= 3 {
-					if vHostsUsed == false {
+					if !vHostsUsed {
 						vHostsUsed = true
 					}
 					vHosts[params[1]] = params[2]
@@ -117,8 +117,17 @@ func parseConfig(conf string) bool {
 					fmt.Println("[WARN] [CONFIG] ssl: missing parameters, skiping")
 				}
 			case "proxy":
-				if len(params) >= 3 {
-					proxyUrls = append(proxyUrls, Proxy{Url: params[2], Vhost: params[1], Address: params[3]})
+				if len(params) >= 4 {
+					proxy := Proxy{Url: params[2], Vhost: params[1], Address: params[3], cutURL: false}
+					if len(params) >= 5 {
+						if params[4] == "true" {
+							proxy.cutURL = true
+						} else {
+							proxy.cutURL = false
+						}
+					}
+					proxyUrls = append(proxyUrls, proxy)
+					fmt.Println("[WARN] [CONFIG] proxy: proxy is unfinished, may not work correctly")
 				} else {
 					fmt.Println("[WARN] [CONFIG] proxy: missing parameters, skiping")
 				}

@@ -5,9 +5,10 @@ import "crypto/tls"
 const SERVER string = "EHServ/0.1"
 
 type Proxy struct {
-  Url string
-  Vhost string
-  Address string
+	Url     string
+	Vhost   string
+	Address string
+	cutURL  bool
 }
 
 var ip string = "0.0.0.0"
