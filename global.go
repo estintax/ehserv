@@ -8,7 +8,6 @@ type Proxy struct {
 	Url     string
 	Vhost   string
 	Address string
-	cutURL  bool
 }
 
 var ip string = "0.0.0.0"

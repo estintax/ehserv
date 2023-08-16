@@ -118,14 +118,7 @@ func parseConfig(conf string) bool {
 				}
 			case "proxy":
 				if len(params) >= 4 {
-					proxy := Proxy{Url: params[2], Vhost: params[1], Address: params[3], cutURL: false}
-					if len(params) >= 5 {
-						if params[4] == "true" {
-							proxy.cutURL = true
-						} else {
-							proxy.cutURL = false
-						}
-					}
+					proxy := Proxy{Url: params[2], Vhost: params[1], Address: params[3]}
 					proxyUrls = append(proxyUrls, proxy)
 					fmt.Println("[WARN] [CONFIG] proxy: proxy is unfinished, may not work correctly")
 				} else {

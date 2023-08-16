@@ -64,18 +64,9 @@ func handleProxyConnection(client net.Conn, proto string, conn net.Conn, host st
 	var handledClientHeaders string
 	var findedBody int
 	splittedMainHead := strings.Split(splittedClientHeaders[0], " ")
-	if proxyUrls[proxyId].cutURL && len(splittedMainHead) == 3 {
-		if splittedMainHead[1][0:len(proxyUrls[proxyId].Url)] == proxyUrls[proxyId].Url {
-			splittedMainHead[1] = splittedMainHead[1][len(proxyUrls[proxyId].Url):]
-			if splittedMainHead[1] == "" {
-				splittedMainHead[1] = "/"
-			}
-		}
-
-		handledClientHeaders = fmt.Sprintf("%s %s %s", splittedMainHead[0], splittedMainHead[1], splittedMainHead[2])
-	} else {
-		handledClientHeaders = splittedClientHeaders[0]
-	}
+	targetPath := "/" + strings.SplitN(proxyUrls[proxyId].Address, "/", 4)[3]
+	splittedMainHead[1] = strings.Replace(splittedMainHead[1], splittedMainHead[1][0:len(proxyUrls[proxyId].Url)], targetPath, 1)
+	handledClientHeaders = fmt.Sprintf("%s %s %s", splittedMainHead[0], splittedMainHead[1], splittedMainHead[2])
 	for i := 0; i < len(splittedClientHeaders); i++ {
 		if splittedClientHeaders[i] == "" {
 			findedBody = i + 1
@@ -122,11 +113,7 @@ func handleProxyConnection(client net.Conn, proto string, conn net.Conn, host st
 			if isTLS {
 				protoStr = "https://"
 			}
-			if proxyUrls[proxyId].cutURL {
-				rawHeaders[i] = strings.Replace(rawHeaders[i], fmt.Sprintf("%s//%s", splitted[0], splitted[2]), fmt.Sprintf("%s%s%s", protoStr, originalHost, proxyUrls[proxyId].Url), 1)
-			} else {
-				rawHeaders[i] = strings.Replace(rawHeaders[i], fmt.Sprintf("%s//%s", splitted[0], splitted[2]), fmt.Sprintf("%s%s", protoStr, originalHost), 1)
-			}
+			rawHeaders[i] = strings.Replace(rawHeaders[i], fmt.Sprintf("%s//%s", splitted[0], splitted[2]), fmt.Sprintf("%s%s%s", protoStr, originalHost, proxyUrls[proxyId].Url), 1)
 		} else {
 			rawHeaders[i] = strings.ReplaceAll(rawHeaders[i], strings.SplitN(host, ":", 2)[0], originalHost)
 			if isTLS {
