@@ -11,8 +11,6 @@ import (
 	"strings"
 )
 
-var isPHP bool = false
-
 func startServer() {
 	if tlsPort != 0 {
 		go startHTTPSServer()
@@ -48,7 +46,7 @@ func connectionHandler(conn net.Conn, isTLS bool) {
 	for {
 		str, err := reader.ReadString('\n')
 		if err != nil {
-			sendHTTPResponse(conn, 500, "text/plain", "500 Internal Server Error")
+			sendHTTPResponse(conn, 500, "text/plain", "500 Internal Server Error", false)
 			return
 		}
 
@@ -65,7 +63,7 @@ func connectionHandler(conn net.Conn, isTLS bool) {
 			for i := 0; i < len(lines); i++ {
 				if i == 0 {
 					if lines[i] == "" || lines[i] == "\n" || lines[i] == "\r\n" {
-						sendHTTPResponse(conn, 400, "text/html", "<h1>400 Bad Request</h1>")
+						sendHTTPResponse(conn, 400, "text/html", "<h1>400 Bad Request</h1>", false)
 						return
 					}
 					params := strings.Split(lines[i], " ")
@@ -76,7 +74,7 @@ func connectionHandler(conn net.Conn, isTLS bool) {
 				}
 			}
 		} else if firstLine == "POST" {
-			if strings.Index(str, ": ") != -1 {
+			if strings.Contains(str, ": ") {
 				param := strings.SplitN(str, ": ", 2)
 				if param[0] == "Content-Length" {
 					contentlength, _ = strconv.Atoi(strings.Replace(param[1], "\r\n", "", -1))
@@ -96,30 +94,11 @@ func connectionHandler(conn net.Conn, isTLS bool) {
 	}
 }
 
-func sendHTTPResponse(conn net.Conn, code int, contentType string, content interface{}) {
+func sendHTTPResponse(conn net.Conn, code int, contentType string, content interface{}, isPHP bool) {
 	var codeStr string
 	var contentLength int
 
-	switch code {
-	case 200:
-		codeStr = "HTTP/1.1 200 OK"
-	case 301:
-		codeStr = "HTTP/1.1 301 Moved Permanently"
-	case 302:
-		codeStr = "HTTP/1.1 302 Found"
-	case 400:
-		codeStr = "HTTP/1.1 400 Bad Request"
-	case 403:
-		codeStr = "HTTP/1.1 403 Forbidden"
-	case 404:
-		codeStr = "HTTP/1.1 404 Not Found"
-	case 500:
-		codeStr = "HTTP/1.1 500 Internal Server Error"
-	case 502:
-		codeStr = "HTTP/1.1 502 Bad Gateway"
-	default:
-		codeStr = "HTTP/1.1 418 I'm a teapot"
-	}
+	codeStr = "HTTP/1.1 " + statusCodes[code]
 
 	switch content.(type) {
 	case []byte:
@@ -130,10 +109,10 @@ func sendHTTPResponse(conn net.Conn, code int, contentType string, content inter
 		contentLength = len(content.(string))
 	}
 
-	if isPHP == true {
-		fmt.Fprintf(conn, "%s\nServer: %s\nConnection: close\n", codeStr, SERVER)
+	if isPHP {
+		fmt.Fprintf(conn, "%s\r\n", codeStr)
 	} else {
-		fmt.Fprintf(conn, "%s\nContent-Type: %s; charset=%s\nContent-Length: %d\nServer: %s\nConnection: close\n\n", codeStr, contentType, charset, contentLength, SERVER)
+		fmt.Fprintf(conn, "%s\r\nDate: %s\r\nCache-Control: no-cache\r\nContent-Type: %s; charset=%s\r\nContent-Length: %d\r\nServer: %s\r\nConnection: close\r\n\r\n", codeStr, getDate(), contentType, charset, contentLength, SERVER)
 	}
 
 	switch content.(type) {
@@ -145,7 +124,6 @@ func sendHTTPResponse(conn net.Conn, code int, contentType string, content inter
 		fmt.Fprint(conn, content.(string))
 	}
 
-	isPHP = false
 	conn.Close()
 }
 
@@ -170,7 +148,7 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 	}
 
 	for i := 0; i < len(all); i++ {
-		if strings.Index(all[i], ": ") != -1 {
+		if strings.Contains(all[i], ": ") {
 			param := strings.SplitN(all[i], ": ", 2)
 			if param[0] == "Host" {
 				host = param[1]
@@ -179,7 +157,7 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 	}
 
 	if host == "" {
-		sendHTTPResponse(conn, 400, "text/html", "<h1>400 Bad Request</h1>")
+		sendHTTPResponse(conn, 400, "text/html", "<h1>400 Bad Request</h1>", false)
 		return false
 	}
 
@@ -188,7 +166,7 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 			if proxyUrls[i].Vhost == host {
 				if strings.Contains(url, proxyUrls[i].Url) {
 					if !proxy(conn, strings.Join(all, "\r\n")+"\r\n"+query, proxyUrls[i].Address, i, isTLS) {
-						sendHTTPResponse(conn, 503, "text/html", "<h1>503 Bad Gateway<h1>")
+						sendHTTPResponse(conn, 503, "text/html", "<h1>503 Bad Gateway<h1>", false)
 					}
 					return true
 				}
@@ -196,21 +174,21 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		}
 	}
 
-	if vHostsUsed == true && vHosts[host] != "" {
+	if vHostsUsed && vHosts[host] != "" {
 		docroot = vHosts[host]
 	}
 
 	file, err := os.Open(docroot + url)
-	defer file.Close()
 	if err != nil {
-		sendHTTPResponse(conn, 404, "text/html", "<h1>404 Not Found</h1>")
+		sendHTTPResponse(conn, 404, "text/html", "<h1>404 Not Found</h1>", false)
 		return false
 	}
+	defer file.Close()
 
 	stat, _ := file.Stat()
 
-	if stat.IsDir() == true {
-		sendHTTPResponse(conn, 403, "text/html", "<h1>403 Forbidden</h1>")
+	if stat.IsDir() {
+		sendHTTPResponse(conn, 403, "text/html", "<h1>403 Forbidden</h1>", false)
 		file.Close()
 		return false
 	}
@@ -219,10 +197,9 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 	parseTwo := strings.Split(parseOne[len(parseOne)-1], ".")
 	format := parseTwo[len(parseTwo)-1]
 
-	if findExt(format) == true && phpCgi != "none" {
-		var params map[string]string
+	if findExt(format) && phpCgi != "none" {
 		//var query string
-		params = make(map[string]string)
+		params := make(map[string]string)
 		for i := 0; i < len(all); i++ {
 			if i == 0 {
 				continue
@@ -264,7 +241,7 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		}
 
 		for i := 0; i < len(all); i++ {
-			if strings.Index(all[i], ": ") != -1 {
+			if strings.Contains(all[i], ": ") {
 				param := strings.SplitN(all[i], ": ", 2)
 				cmd.Env = append(cmd.Env, strings.ToUpper("HTTP_"+param[0]+"=")+param[1])
 			}
@@ -277,14 +254,11 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		stdout, _ := cmd.StdoutPipe()
 		err = cmd.Start()
 		if err != nil {
-			sendHTTPResponse(conn, 500, "text/html", "<h1>500 Internal Server Error</h1></h2>Failed to start PHP Server: "+err.Error()+"</h2>")
+			sendHTTPResponse(conn, 502, "text/html", "<h1>502 Bad Gateway</h1>", false)
 			return false
 		}
 		stdin.Write(data)
 		phpReader := bufio.NewReader(stdout)
-		//length := reader.Size()
-		//phpData := make([]byte, length)
-		//length, _ = reader.Read(phpData)
 		var phpData string
 		for {
 			singleByte, err := phpReader.ReadByte()
@@ -294,15 +268,48 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 
 			phpData += string(singleByte)
 		}
-		isPHP = true
-		//sendHTTPResponse(conn, 200, "", string(phpData[:length]))
-		sendHTTPResponse(conn, 200, "", phpData)
-		phpData = ""
-		data = nil
+		err = cmd.Wait()
+		if err != nil {
+			sendHTTPResponse(conn, 502, "text/html", "<h1>502 Bad Gateway</h1>", false)
+			return true
+		}
+		var statusCode int = 200
+		splittedHeaders := strings.Split(string(phpData), "\r\n")
+		if len(splittedHeaders) <= 1 {
+			splittedHeaders = strings.Split(string(phpData), "\n")
+		}
+		for i := 0; i < len(splittedHeaders); i++ {
+			if strings.Contains(splittedHeaders[i], "Status: ") {
+				statusCode, _ = strconv.Atoi(strings.SplitN(splittedHeaders[i], " ", 3)[1])
+			} else if splittedHeaders[i] == "" {
+				break
+			}
+		}
+		headersSplit := strings.SplitN(phpData, "\r\n\r\n", 2)
+		if len(headersSplit) == 1 {
+			headersSplit = strings.SplitN(phpData, "\n\n", 2)
+		}
+		if !strings.Contains(headersSplit[0], "Server: ") {
+			phpData = "Server: " + SERVER + "\r\n" + phpData
+		}
+		if !strings.Contains(headersSplit[0], "Connection: ") {
+			phpData = "Connection: close\r\n" + phpData
+		}
+		if !strings.Contains(headersSplit[0], "Cache-Control: ") {
+			phpData = "Cache-Control: no-cache\r\n" + phpData
+		}
+		if !strings.Contains(headersSplit[0], "Date: ") {
+			phpData = "Date: " + getDate() + "\r\n" + phpData
+		}
+		sendHTTPResponse(conn, statusCode, "", phpData, true)
 		return true
 	}
 
-	fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nContent-Type: %s; charset=%s\r\nContent-Length: %d\r\nServer: %s\r\nConnection: close\r\n\r\n", getContentType(format), charset, stat.Size(), SERVER)
+	contentType := getContentType(format)
+	if contentType == "text/plain" || contentType == "text/html" {
+		contentType = contentType + "; charset=" + charset
+	}
+	fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nDate: %s\r\nCache-Control: no-cache\r\nContent-Type: %s\r\nContent-Length: %d\r\nServer: %s\r\nConnection: close\r\n\r\n", getDate(), contentType, stat.Size(), SERVER)
 	defer conn.Close()
 	fileReader := bufio.NewReader(file)
 	fileReader.WriteTo(conn)
