@@ -174,8 +174,10 @@ func handleURL(conn net.Conn, method string, urlp string, all []string, query st
 		}
 	}
 
-	if vHostsUsed && vHosts[host] != "" {
-		docroot = vHosts[host]
+	if vHostsUsed {
+		if _, ok := vHosts[host]; ok {
+			docroot = vHosts[host].Root
+		}
 	}
 
 	file, err := os.Open(docroot + url)

@@ -1,0 +1,9 @@
+eh:host, "0.0.0.0"
+eh:port, "http", 80
+eh:port, "https", 443
+eh:charset, "utf-8"
+eh:default-mime, "text/plain"
+eh:webroot, "www/default"
+eh:default-page, "index.html"
+
+eh:add-vhost, "localhost", "www/localhost", "certs/localhost.crt", "certs/localhost.key"

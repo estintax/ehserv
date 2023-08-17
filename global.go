@@ -10,6 +10,11 @@ type Proxy struct {
 	Address string
 }
 
+type vHost struct {
+	Root        string
+	DefaultPage string
+}
+
 var ip string = "0.0.0.0"
 var port int = 8080
 var charset string = "utf-8"
@@ -20,7 +25,7 @@ var phpCgi string = "none"
 var extEnum []string
 
 var vHostsUsed bool = false
-var vHosts map[string]string
+var vHosts map[string]vHost
 
 var tlsPort int = 0
 var certs []tls.Certificate

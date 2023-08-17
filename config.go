@@ -93,7 +93,7 @@ func parseConfig(conf string) bool {
 					if !vHostsUsed {
 						vHostsUsed = true
 					}
-					vHosts[params[1]] = params[2]
+					vHosts[params[1]] = vHost{params[2], defaultPage}
 					if len(params) >= 5 {
 						cert, err := tls.LoadX509KeyPair(params[3], params[4])
 						if err != nil {
